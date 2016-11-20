@@ -7,7 +7,9 @@ include Treat::Core::DSL
 # 5. POS Tagger
 # 6. Chunker
 # 7. Parser
-
+# 8. Quering Knowledge Base
+# 9. Gathering Results
+# 10. Disambiguation Procedure
 
 string_input = paragraph("Barack Hussein Obama II (US Listeni/bəˈrɑːk huːˈseɪn oʊˈbɑːmə/;[1][2] born August 4, 1961) is an American politician who is the 44th and current President of the United States. He is the first African American to hold the office and the first president born outside the continental United States. Born in Honolulu, Hawaii, Obama is a graduate of Columbia University and Harvard Law School, where he was president of the Harvard Law Review. He was a community organizer in Chicago before earning his law degree. He worked as a civil rights attorney and taught constitutional law at the University of Chicago Law School between 1992 and 2004. While serving three terms representing the 13th District in the Illinois Senate from 1997 to 2004, he ran unsuccessfully in the Democratic primary for the United States House of Representatives in 2000 against incumbent Bobby Rush.")
 sentence_array =  string_input.segment
