@@ -1,0 +1,71 @@
+import json
+import gzip
+import sys
+import re
+import pprint
+import nltk
+from bs4 import BeautifulSoup
+
+html_regex = re.compile(r'<html>(.*)<\/html>', re.DOTALL)
+
+def extract_entity_names(t):
+    entity_names = []
+
+    if hasattr(t, 'label') and t.label:
+        if t.label() == 'NE':
+            entity_names.append(' '.join([child[0] for child in t]))
+        else:
+            for child in t:
+                entity_names.extend(extract_entity_names(child))
+
+    return entity_names
+
+def main(argv):
+	file_name = argv[0]
+	if "warc.gz" not in file_name:
+		print file_name+" is of unsupported type. Supported type is .warc.gz!"
+		return 0
+	with gzip.open(file_name, 'rb') as f:
+		warc_content = f.read()
+		responses = re.findall(html_regex, warc_content)
+		for resp in responses:
+			soup = BeautifulSoup("<html>"+resp+"</html>", 'html.parser')
+			text = soup.get_text()
+			
+			#tokenize sentences
+			sentences = nltk.sent_tokenize(text)
+			#tokenize words
+			tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
+			#POS words tagging 
+			tagged_sentences = [nltk.pos_tag(sentence) for sentence in tokenized_sentences]
+			#currently recommended NAMED ENTITY chunker to chunk the given list of tagged sentences
+			chunked_sentences = nltk.ne_chunk_sents(tagged_sentences, binary=True)
+
+
+			entity_names = []
+			for tree in chunked_sentences:
+			    # Print results per sentence
+			    # print extract_entity_names(tree)
+
+			    entity_names.extend(extract_entity_names(tree))
+
+			# Print all entity names
+			 print entity_names
+
+			# Print unique entity names
+			#print set(entity_names)
+
+
+
+
+
+if __name__ == "__main__":
+	argv = sys.argv
+	if len(argv)<2:
+		print "Provide the .warc.gz file as the first argument along with the script call.\nE.g.: python ~/parser.py sample.warc.gz"
+	else:
+		main(sys.argv[1:])
+	exit(0)
+
+
+
