@@ -92,7 +92,7 @@ def extractUniqueEntities(tokens):
 	return unique_entities
 
 
-
+##The runProcedure is meant to represent the run per EACH (one) filename.
 def runProcedure(argv):
 	file_name = validateInput(argv[0])
 	assert(file_name)
@@ -141,6 +141,7 @@ def runProcedure(argv):
 				
 
 def main(argv):
+	##The runProcedure is meant to represent the run per EACH (one) filename.
 	runProcedure(argv)
 	exit(0)
 
