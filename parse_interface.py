@@ -9,8 +9,11 @@ from nltk import sent_tokenize, word_tokenize, pos_tag, ne_chunk, tree
 from nltk.corpus import stopwords, state_union, wordnet, conll2000
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from bs4 import BeautifulSoup
+from pyspark import SparkContext
 
 html_regex = re.compile(r'<html>(.*)<\/html>', re.DOTALL)
+
+sc = SparkContext("local", "knowledge-acquisition")
 
 ##TODO Check how to include ACE for relation extraction.
 ##TODO http://www.nltk.org/_modules/nltk/sem/relextract.html
@@ -141,9 +144,44 @@ def runProcedure(argv):
 				
 
 def main(argv):
+
+	file_name = validateInput(argv[0])
+	assert(file_name)
+
+	chunkParser = getChunker()
+
+	with gzip.open(file_name, 'rb') as f:
+		warc_content = f.read()
+
+		html_pages_array = re.findall(html_regex, warc_content)
+
+		for html_page in html_pages_array:
+			text = getText(html_page)
+
+		#print text.split(',')	
+
+		text_rdd = sc.parallelize(text.split(','))
+
+		tokens_rdd = text_rdd.map(lambda text: casualTokenizing(text))
+	
+
+		#stemmed_rdd = tokens_rdd.map(lambda token: stemmatizeTokens(token))
+
+		#stop_words_rdd = stemmed_rdd.map(lambda stem: filterTokens(stem))
+
+		tagged_tokens_rdd = tokens_rdd.map(lambda tt: pos_tag(tt))
+
+		entities_rdd = tagged_tokens_rdd.map(lambda x: extractUniqueEntities(x))
+
+		entities = entities_rdd.collect()
+
+		for entity in entities: print entity
+
+
 	##The runProcedure is meant to represent the run per EACH (one) filename.
-	runProcedure(argv)
-	exit(0)
+	#runProcedure(argv)
+
+	#exit(0)
 
 
 
