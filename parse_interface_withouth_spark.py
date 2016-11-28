@@ -11,8 +11,10 @@ from nltk import sent_tokenize, word_tokenize, pos_tag, ne_chunk, tree
 # from nltk.stem import PorterStemmer, WordNetLemmatizer
 from bs4 import BeautifulSoup
 
-html_regex = re.compile(r'<html>(.*)<\/html>', re.DOTALL)
-
+warc_type_regex = re.compile(r'((WARC-Type:).*)')
+warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
+html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTALL)
+# https://regex101.com/r/p0Rmd1/2
 ##TODO Check how to include ACE for relation extraction.
 ##TODO http://www.nltk.org/_modules/nltk/sem/relextract.html
 
@@ -122,7 +124,10 @@ def linkEntities(entities):
 			print hit
 			if hit['_score']==max_score:
 				if hit['_index']=="freebase":
-					entity_label = str(hit['_source']['label'])
+					try:
+						entity_label = str(hit['_source']['label'])
+					except Exception as e:
+						continue
 					entity_id = '/'+str(hit['_source']['resource'].split('fbase:')[1].replace('.','/'))
 		print "================================================"
 		if entity_id:
@@ -133,8 +138,9 @@ def linkEntities(entities):
 	return linked_entities
 
 def runProcedure(argv):
-	file_name = validateInput(argv[0])
-	assert(file_name)
+	WARC_RECORD_ID = argv[0]
+	file_name = validateInput(argv[1])
+	output_name = argv[2]
 	##Iitialization
 	# stop_words = set(stopwords.words("english"))
 	# chunkParser = getChunker()
@@ -144,14 +150,21 @@ def runProcedure(argv):
 		warc_id = "Warc_id pending."
 		warc_content = f.read()
 
+		warc_types = re.findall(warc_type_regex, warc_content)
+		warc_records_ids = re.findall(warc_record_id_regex,warc_content)
+		warc_index = -1
 		##Getting all html text and putting it in the responsive array.
 		html_pages_array = re.findall(html_regex, warc_content)
 
 		##For each element in array:
+		write_file = open(output_name, 'w')
+		# write_file.write("{0}\t{1}\t{2}\n".format("WARC-RECORD-ID","Entity Labe;","Freebase Entity ID"))
+		write_file.close()
 		for html_page in html_pages_array:
+			warc_id=''
 			##Extracting all text with BS
 			##I'm appending the tags to the front and the back as they are getting stripped cause of our warc regex.
-			text = getText(html_page)
+			text = getText(html_page[0])
 
 			##Tokening first into sentences and then into words.
 			sentence, tokens = casualTokenizing(text)
@@ -176,12 +189,16 @@ def runProcedure(argv):
 			# runEvaluation()
 
 			##Discovering and tagging Named Entities (NER)
+			warc_index+=3
+			warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
+			
 			entities = extractUniqueEntities(tagged_tokens)
-			write_file = open('output.tsv', 'w')
+			write_file = open(output_name, 'a')
 			linked_entities = linkEntities(entities)
 
 			for linked in linked_entities:
 				write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
+			write_file.close()
 
 				
 
