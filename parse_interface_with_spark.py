@@ -7,9 +7,15 @@ import requests
 import nltk
 import os
 from nltk import sent_tokenize, word_tokenize, pos_tag, ne_chunk, tree
+from pyspark import SparkContext, SparkConf
 # from nltk.corpus import stopwords, state_union, wordnet, conll2000
 # from nltk.stem import PorterStemmer, WordNetLemmatizer
 from bs4 import BeautifulSoup
+
+conf = SparkConf()
+conf.setMaster('yarn')
+conf.setAppName('knowledge-acquisition')
+sc = SparkContext(conf=conf)
 
 warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
@@ -44,6 +50,19 @@ def casualTokenizing(text):
 	tokens = word_tokenize(text)
 
 	return sentences, tokens
+
+
+def tokenize(x):
+	return word_tokenize(x)
+
+
+
+def tag(x):
+	return pos_tag(x)
+
+def chunk(tagged_tokens):
+	return ne_chunk(tagged_tokens, binary=True)
+
 
 # def filterTokens(tokens):
 #       stop_words = set(stopwords.words("english"))
@@ -137,8 +156,8 @@ def linkEntities(entities):
 			continue
 	return linked_entities
 
-def runProcedure(argv):
-	print argv
+#def runProcedure(argv):
+	#print argv
 	WARC_RECORD_ID = argv[0]
 	file_name = validateInput(argv[1])
 	output_name = argv[2]
@@ -161,14 +180,14 @@ def runProcedure(argv):
 		write_file = open(output_name, 'w')
 		# write_file.write("{0}\t{1}\t{2}\n".format("WARC-RECORD-ID","Entity Labe;","Freebase Entity ID"))
 		write_file.close()
-		for html_page in html_pages_array:
-			warc_id=''
+		#for html_page in html_pages_array:
+			#warc_id=''
 			##Extracting all text with BS
 			##I'm appending the tags to the front and the back as they are getting stripped cause of our warc regex.
-			text = getText(html_page[0])
+			#text = getText(html_page[0])
 
 			##Tokening first into sentences and then into words.
-			sentence, tokens = casualTokenizing(text)
+			#sentence, tokens = casualTokenizing(text)
 			
 			##Removing stopwords
 			##Couldn't fix an indexing error making it a function, and I'll do it another time.
@@ -182,7 +201,7 @@ def runProcedure(argv):
 			# lemmatized_tokens=lemmatizeTokens(tokens,"n")
 
 			##Pos-tagging the pre-processed words
-			tagged_tokens = pos_tag(tokens)
+			#tagged_tokens = pos_tag(tokens)
 
 			##Chunking
 			# chunked_tokens = chunkParser.parse(tagged_tokens)
@@ -190,23 +209,61 @@ def runProcedure(argv):
 			# runEvaluation()
 
 			##Discovering and tagging Named Entities (NER)
-			warc_index+=3
-			warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
+			#warc_index+=3
+			#warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
 			
-			entities = extractUniqueEntities(tagged_tokens)
-			write_file = open(output_name, 'a')
+			#entities = extractUniqueEntities(tagged_tokens)
+			#write_file = open(output_name, 'a')
+			#linked_entities = linkEntities(entities)
+
+			#for linked in linked_entities:
+				#write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
+			#write_file.close()
+
+				
+
+def main(argv):
+	WARC_RECORD_ID = argv[0]
+	file_name = validateInput(argv[1])
+	output_name = argv[2]
+
+	with gzip.open(file_name, 'rb') as f:
+		warc_id = "Warc_id pending."
+		warc_content = f.read()
+
+		warc_types = re.findall(warc_type_regex, warc_content)
+		warc_records_ids = re.findall(warc_record_id_regex,warc_content)
+		warc_index = -1
+		##Getting all html text and putting it in the responsive array.
+		html_pages_array = re.findall(html_regex, warc_content)
+
+		##For each element in array:
+		write_file = open(output_name, 'w')
+		# write_file.write("{0}\t{1}\t{2}\n".format("WARC-RECORD-ID","Entity Labe;","Freebase Entity ID"))
+		write_file.close()
+		for html_page in html_pages_array:
+			warc_id=''
+			##Extracting all text with BS
+			##I'm appending the tags to the front and the back as they are getting stripped cause of our warc regex.
+			text = getText(html_page[0])
+
+	raw_text_rdd = sc.parallelize(raw_text.split(' '))
+	tokens_rdd = raw_text_rdd.map(lambda t: tokenize(t))
+	tagged_tokens_rdd = tokens_rdd.map(lambda tt: tag(tt))
+
+	tagged_tokens = tagged_tokens_rdd.collect()
+	entities = extractUniqueEntities(tagged_tokens)
+
+	warc_index+=3
+	warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
+			
+
+	write_file = open(output_name, 'a')
 			linked_entities = linkEntities(entities)
 
 			for linked in linked_entities:
 				write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
 			write_file.close()
-
-				
-
-def main(argv):
-	runProcedure(argv)
-	exit(0)
-
 
 
 if __name__ == "__main__":
