@@ -93,6 +93,44 @@ def extractUniqueEntities(tokens):
 	return unique_entities
 
 
+def linkEntities(entities):
+	linked_entities=[]
+	for entry in entities:
+		label = entry.label()
+		leaves = entry.leaves()
+		size = len(leaves)
+		entity = ""
+		entity_id = ""
+		for leaf in leaves:
+			entity += '-'+leaf[0].lower()
+		if entity=="":
+			continue
+		response = os.popen('curl "http://10.149.0.127:9200/freebase/label/_search?q={0}"'.format(entity[1:].strip()))
+		try:
+			json_res = json.loads(response.read())
+		except Exception as e:
+			print "No response for "+entity
+			continue
+		##Here we need to add some validity check in case we get an empty response, to continue to the next entity
+		if json_res['hits']['total']==0:
+			print "Got 0 hits for: "+entity[1:].strip()
+			continue
+		max_score = json_res['hits']['max_score']
+		hits = json_res['hits']['hits']
+		freebase_id = ""
+		for hit in hits:
+			print hit
+			if hit['_score']==max_score:
+				if hit['_index']=="freebase":
+					entity_label = str(hit['_source']['label'])
+					entity_id = '/'+str(hit['_source']['resource'].split('fbase:')[1].replace('.','/'))
+		print "================================================"
+		if entity_id:
+			linked_entities.append({'entity_label':entity_label,'entity_id':entity_id})
+		else:
+			# print "Got results but no hits for "+entity[1:].strip()
+			continue
+	return linked_entities
 
 def runProcedure(argv):
 	file_name = validateInput(argv[0])
@@ -140,41 +178,10 @@ def runProcedure(argv):
 			##Discovering and tagging Named Entities (NER)
 			entities = extractUniqueEntities(tagged_tokens)
 			write_file = open('output.tsv', 'w')
-			for entry in entities:
-				label = entry.label()
-				leaves = entry.leaves()
-				size = len(leaves)
-				entity = ""
-				entity_id = ""
-				for leaf in leaves:
-					entity += '-'+leaf[0].lower()
-				if entity=="":
-					continue
-				response = os.popen('curl "http://10.149.0.127:9200/freebase/label/_search?q={0}"'.format(entity[1:].strip()))
-				try:
-					json_res = json.loads(response.read())
-				except Exception as e:
-					print "No response for "+entity
-					continue
-				##Here we need to add some validity check in case we get an empty response, to continue to the next entity
-				if json_res['hits']['total']==0:
-					print "Got 0 hits for: "+entity[1:].strip()
-					continue
-				max_score = json_res['hits']['max_score']
-				hits = json_res['hits']['hits']
-				freebase_id = ""
-				for hit in hits:
-					print hit
-					if hit['_score']==max_score:
-						if hit['_index']=="freebase":
-							entity_label = str(hit['_source']['label'])
-							entity_id = '/'+str(hit['_source']['resource'].split('fbase:')[1].replace('.','/'))
-				print "================================================"
-				if entity_id:
-					write_file.write("{0}\t{1}\t{2}\n".format(warc_id,entity_label,entity_id))
-				else:
-					print "Got results but no hits for "+entity[1:].strip()
+			linked_entities = linkEntities(entities)
 
+			for linked in linked_entities:
+				write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
 
 				
 
