@@ -12,10 +12,10 @@ from pyspark import SparkContext, SparkConf
 # from nltk.stem import PorterStemmer, WordNetLemmatizer
 from bs4 import BeautifulSoup
 
-conf = SparkConf()
-conf.setMaster('yarn')
-conf.setAppName('knowledge-acquisition')
-sc = SparkContext(conf=conf)
+#conf = SparkConf()
+#conf.setMaster('yarn')
+#conf.setAppName('knowledge-acquisition')
+sc = SparkContext('local', 'test')
 
 warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
@@ -106,7 +106,7 @@ def chunk(tagged_tokens):
 
 def extractUniqueEntities(tokens):
 	unique_entities = []
-	tagged_entities = ne_chunk(tokens, binary=False)
+	tagged_entities = ne_chunk(tokens, binary=True)
 	for entity in tagged_entities:
 		if isinstance(entity, tree.Tree):
 			if entity not in unique_entities:
@@ -247,7 +247,7 @@ def main(argv):
 			##I'm appending the tags to the front and the back as they are getting stripped cause of our warc regex.
 			text = getText(html_page[0])
 
-	raw_text_rdd = sc.parallelize(raw_text.split(' '))
+	raw_text_rdd = sc.parallelize(text.split(' '))
 	tokens_rdd = raw_text_rdd.map(lambda t: tokenize(t))
 	tagged_tokens_rdd = tokens_rdd.map(lambda tt: tag(tt))
 
@@ -259,11 +259,13 @@ def main(argv):
 			
 
 	write_file = open(output_name, 'a')
-			linked_entities = linkEntities(entities)
 
-			for linked in linked_entities:
-				write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
-			write_file.close()
+	linked_entities = linkEntities(entities)
+
+	for linked in linked_entities:
+		write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
+
+	write_file.close()
 
 
 if __name__ == "__main__":
