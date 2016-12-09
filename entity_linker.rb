@@ -1,6 +1,7 @@
 require 'ruby-spark'
 require 'warc'
 require 'nokogiri'
+require 'rake_text'
 
 
 def initialize_spark
@@ -32,8 +33,12 @@ parsed_content = contents.map {|c| Nokogiri::HTML.fragment c}
 
 text_list = parsed_content.map {|pc| pc.css('p').text}
 
-text = extract_text text_list
-puts text.join(" ")	
+refined_text = text_list.join(" ").gsub(/\s+/, " ")
+
+rake = RakeText.new
+
+keywords = rake.analyse refined_text, RakeText.SMART, true
+puts keywords	
 
 
 

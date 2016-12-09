@@ -14,25 +14,38 @@ html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTAL
 
 sc = SparkContext("local", "knowledge-acquisition")
 
-def extract_text(file_name):
-	with gzip.open(file_name, 'rb') as f:
+
+def get_warc_info(file_name):
+	with gzip.open(file_name,'rb') as f:
+		warc_id = "Warc_id pending."
 		warc_content = f.read()
-		responses = re.findall(html_regex, warc_content)
-		for resp in responses:
-			soup = BeautifulSoup("<html>"+resp+"</html>", 'html.parser')
-			text = soup.get_text()
-			return text
+	return (warc_id, warc_content)	
 
-def tokenize(x):
-	return word_tokenize(x)
+def casualTokenizing(text):
+	sentences = sent_tokenize(text)
+	sentences = filter(lambda sent: sent != "", sentences)
+	tokens = word_tokenize(text)
 
-def tag(x):
-	return pos_tag(x)
+	return sentences, tokens
+
+def extractUniqueEntities(tokens):
+	unique_entities = []
+	tagged_entities = ne_chunk(tokens, binary=False)
+	for entity in tagged_entities:
+		if isinstance(entity, tree.Tree):
+
+			if entity not in unique_entities:
+				unique_entities.append(entity)
+	return unique_entities
 
 
-def chunk(tagged_tokens):
-	return ne_chunk(tagged_tokens, binary=True)
-
+ def filterTokens(tokens):
+ 	stop_words = set(stopwords.words("english"))
+ 	filtered_tokens = []
+ 	for t in tokens:
+ 		if t not in stop_words:
+ 			filtered_tokens.append(t)
+ 	return filtered_tokens
 
 def validateInput(file_name):
 	if "warc.gz" not in file_name:
@@ -41,11 +54,53 @@ def validateInput(file_name):
 	else:
 		return file_name
 
-
 def getText(html_page):
 	soup = BeautifulSoup("<html>"+html_page+"</html>", 'html.parser')
 	text = soup.get_text()
-	return text		
+	return text	
+
+def runProcedure(html_page, warc_info):
+	warc_id = warc_info[0]
+	warc_content = warc_info[1]
+	
+	warc_types = re.findall(warc_type_regex, warc_content)
+	warc_records_ids = re.findall(warc_record_id_regex,warc_content)
+	warc_index = -1
+	warc_id = ''
+	
+    text = getText(html_page)
+
+	##Tokening first into sentences and then into words.
+	sentence, tokens = casualTokenizing(text)
+			
+	##Removing stopwords
+	##Couldn't fix an indexing error making it a function, and I'll do it another time.
+	# filtered_tokens = filterTokens(tokens)
+
+	# ##Stemming
+	# stemmed_tokens = stemmatizeTokens(tokens)
+
+	# ##Lemmatizing
+	# ##For the lemmatization we are using the "n", cause we are getting the nouns. This can change if we make a different decision.
+	# lemmatized_tokens=lemmatizeTokens(tokens,"n")
+
+	##Pos-tagging the pre-processed words
+	tagged_tokens = pos_tag(tokens)
+
+	##Chunking
+	# chunked_tokens = chunkParser.parse(tagged_tokens)
+			
+	# runEvaluation()
+	##Discovering and tagging Named Entities (NER)
+	warc_index+=3
+	warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
+			
+	entities = extractUniqueEntities(tagged_tokens)
+	
+	linked_entities = linkEntities(entities)
+
+	return linked_entities
+
 
 
 def linkEntities(entities):
@@ -110,56 +165,27 @@ def main(argv):
 	WARC_RECORD_ID = argv[0]
 	file_name = validateInput(argv[1])
 	output_name = argv[2]
-	unique_entities = []
+	html_text_array = []
 
-	with gzip.open(file_name, 'rb') as f:
-		warc_id = "Warc_id pending."
-		warc_content = f.read()
+	warc_info = get_warc_info(file_name)
 
-		warc_types = re.findall(warc_type_regex, warc_content)
-		warc_records_ids = re.findall(warc_record_id_regex,warc_content)
-		warc_index = -1
-		##Getting all html text and putting it in the responsive array.
-		html_pages_array = re.findall(html_regex, warc_content)
+	html_pages_array = re.findall(html_regex, warc_info[1])
 
-		##For each element in array:
-		write_file = open(output_name, 'w')
-		# write_file.write("{0}\t{1}\t{2}\n".format("WARC-RECORD-ID","Entity Labe;","Freebase Entity ID"))
-		write_file.close()
-		for html_page in html_pages_array:
-			warc_id=''
-			##Extracting all text with BS
-			##I'm appending the tags to the front and the back as they are getting stripped cause of our warc regex.
-			text = getText(html_page[0])
+	for html_page in html_pages_array:
+		html_text_array.append(html_page[0])
 	
-	text_rdd = sc.parallelize(text.split(' '))
-	tokens_rdd = text_rdd.map(lambda t: tokenize(t))
-	tagged_tokens_rdd = tokens_rdd.map(lambda tt: tag(tt))
-	tagged_entities_rdd = tagged_tokens_rdd.map(lambda x: chunk(x))
-	tagged_entities = tagged_entities_rdd.collect()
+	
+	rdd = sc.parallelize(html_text_array, 4)
+	linked_entities_rdd = rdd.flatMap(lambda x: runProcedure(x, warc_info))
 
-	for entity in tagged_entities:
-		if isinstance(entity, tree.Tree):
-			if entity not in unique_entities:
-				unique_entities.append(entity)
-
-
-	warc_index+=3
-	warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
-			
-
+	linked_entities = linked_entities_rdd.collect()	
 	write_file = open(output_name, 'a')
 
-	linked_entities = linkEntities(unique_entities)
-
 	for linked in linked_entities:
+
 		write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
 
-	write_file.close()
-			
-
-			
-				
+	write_file.close()			
 
 if __name__ == "__main__":
 	argv = sys.argv
