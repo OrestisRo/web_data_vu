@@ -108,10 +108,16 @@ def get_articles(args):
 	)
 	return articles
 
+## ============Article Keys=============
+##[u'type_of_material', u'blog', u'news_desk', u'lead_paragraph', u'headline', u'abstract',\
+## u'print_page', u'word_count', u'_id', u'snippet', u'source', u'slideshow_credits', u'web_url',\
+## u'multimedia', u'subsection_name', u'keywords', u'byline', u'document_type', u'pub_date', u'section_name']
+
 def filter_articles(articles):
 	docs = articles['response']['docs']
 	filtered = []
 	for d in docs:
+		d['headline']['main'] = d['headline']['main'].encode('utf-8')
 		keyword_buffer = []
 		for k in d['keywords']:
 			if (k['name']!='subject'):
@@ -162,28 +168,41 @@ def runProcedure(argv):
 			# warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
 			
 			entities = extractUniqueEntities(tagged_tokens)
+			# linked_entities = linkEntities(entities)
 
 			##Testing with NYT
-			for entity in entities:
+			for entity in entities:	##linked_entities should go here.
 				print entity
 				entity = "Obama"
 				api_response = get_articles(entity)
 				# articles = toy_parser(api_response)
 				filtered_articles = filter_articles(api_response)
 				r = ''
+				print len(api_response)
+				print len(filtered_articles)
 				for article in filtered_articles:
 					print article['web_url']
 					r = requests.get(article['web_url'])
 					soup = BeautifulSoup(r.text, 'html.parser')
 					# text = soup.get_text('p class="story-body-text story-content"')
 					text = soup.find_all('p', {'class':'story-body-text story-content'})
+					merged_text = ''
 					for t in text:
-						print t.get_text()
-					return 0
+						# print t.get_text()
+						merged_text+=t.get_text()
+					# merged_text=merged_text.decode('utf-8').encode('utf-8')
+					article_sentences, article_tokens = casualTokenizing(merged_text)
+					article_tagged_tokens = pos_tag(article_tokens)
+					article_entities = extractUniqueEntities(article_tagged_tokens)
+					print "------ "+article['headline']['main']+" ------"
+					print article_entities
+					print "(press return for next article.)"
+					raw_input()
+
+				return 0
+
 
 			# write_file = open(output_name, 'a')
-			# linked_entities = linkEntities(entities)
-
 			# for linked in linked_entities:
 			# 	write_file.write("{0}\t{1}\t{2}\n".format(warc_id,linked['entity_label'],linked['entity_id']))
 			# write_file.close()
