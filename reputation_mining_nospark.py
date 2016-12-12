@@ -44,6 +44,7 @@ def casualTokenizing(text):
 
 def extractUniqueEntities(tokens):
 	unique_entities = []
+	entity_count = {}
 	tagged_entities = ne_chunk(tokens, binary=False)
 	# st = StanfordNERTagger('./stan_files/english.all.3class.distsim.crf.ser.gz','./stan_files/stanford-ner.jar')
 	# print st.tag("The Washington Monument is the most prominent structure in Washington, D.C. and one of the city's early attractions. It was built in honor of George Washington, who led the country to independence and then became its first President.".split())
@@ -52,7 +53,20 @@ def extractUniqueEntities(tokens):
 		if isinstance(entity, tree.Tree):
 			if entity not in unique_entities:
 				unique_entities.append(entity)
-	return unique_entities
+			entity_buff=""
+			for leaf in entity.leaves():
+				entity_buff+=leaf[0]+" "
+			entity_buff = entity_buff.strip()
+			## In case of case sensitivity issues, replace this with the bellow code.
+			# if entity_buff.lower() not in entity_count.keys():
+			# 	entity_count[entity_buff.lower()] = 1
+			# else:
+			# 	entity_count[entity_buff.lower()] += 1
+			if entity_buff not in entity_count.keys():
+				entity_count[entity_buff] = 1
+			else:
+				entity_count[entity_buff] += 1
+	return unique_entities, entity_count
 
 
 def linkEntities(entities):
@@ -167,12 +181,11 @@ def runProcedure(argv):
 			warc_index+=3
 			# warc_id = ((warc_records_ids[warc_index][0]).split(' '))[1]
 			
-			entities = extractUniqueEntities(tagged_tokens)
+			entities, entity_count = extractUniqueEntities(tagged_tokens)
 			# linked_entities = linkEntities(entities)
 
-			##Testing with NYT
+			
 			for entity in entities:	##linked_entities should go here.
-				print entity
 				entity = "Obama"
 				api_response = get_articles(entity)
 				# articles = toy_parser(api_response)
@@ -181,6 +194,8 @@ def runProcedure(argv):
 				print len(api_response)
 				print len(filtered_articles)
 				for article in filtered_articles:
+					article_entities = []
+					article_entities_count = {}
 					print article['web_url']
 					r = requests.get(article['web_url'])
 					soup = BeautifulSoup(r.text, 'html.parser')
@@ -193,10 +208,11 @@ def runProcedure(argv):
 					# merged_text=merged_text.decode('utf-8').encode('utf-8')
 					article_sentences, article_tokens = casualTokenizing(merged_text)
 					article_tagged_tokens = pos_tag(article_tokens)
-					article_entities = extractUniqueEntities(article_tagged_tokens)
-					print "------ "+article['headline']['main']+" ------"
-					print article_entities
-					print "(press return for next article.)"
+					article_entities, article_entities_count = extractUniqueEntities(article_tagged_tokens)
+					print "------ Title: "+article['headline']['main']+" ----------"
+					print "\n***Entity Trees Found:***\n"+str(article_entities)
+					print "\n***Entity Occurance Rate:***\n"+str(article_entities_count)
+					print "\n(press return for next article.)"
 					raw_input()
 
 				return 0
