@@ -8,7 +8,12 @@ import matplotlib.lines as mlines
 #entities = ['Entity1', 'Entity2', 'Entity3', 'Entity4', 'Entity5', 'Entity6','Entity7', 'Entity8', 'Entity9', 'Entity10']
 #values = [1,20,13,21,5,22,7,23,9,20]
 
-
+## New version arguments should be:
+## 1) main_entity_name
+## 2) article_name(probably plot title as well)
+## 3) list of dictionaries of entities found keys(entity_label,count) e.g. [{'entity_label':"obama", 'count': 5},{'entity_label':"trump", 'count': 2}]
+## 4) output_file_name (not including the .png that has to be appended here)
+## 5) optionally, the number of the highest ranked entities (higher count). Leave this for last if there is time.
 def visualize(entities,values,print_range):
 	#In Range of total pictures(png) to be made 
 	for i in range(1,print_range+1):

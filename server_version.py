@@ -194,9 +194,11 @@ def runProcedure(argv):
 				api_response = get_articles(query_entity)
 				# articles = toy_parser(api_response)
 				filtered_articles = filter_articles(api_response)
+				overall_entity_score = {}
 				r = ''
 				print len(api_response)
 				print len(filtered_articles)
+				file_count = 0
 				for article in filtered_articles:
 					article_entities = []
 					article_entities_count = {}
@@ -215,13 +217,30 @@ def runProcedure(argv):
 					article_tagged_tokens = pos_tag(article_tokens)
 					article_entities, article_entities_count = extractUniqueEntities(article_tagged_tokens)
 					article_linked_entities = linkEntities(article_entities, article_entities_count)
+					if not overall_entity_score:
+						overall_entity_score = article_linked_entities
+					else:
+						for l in article_linked_entities:
+							flag = 0
+							for o in overall_entity_score:
+								if l['entity_label']==o['entity_label']:
+									overall_entity_score[o['entity_label']] += l['count']
+									flag = 1
+							if flag == 0:
+								overall_entity_score[l['entity_label']]=l['count']
 					print "\n------ Title: "+article['headline']['main']+" ----------"
-					print "***Article entities found, along with occurance rate:***"
-					pprint(article_linked_entities)
-					# print "\n***Entity Occurance Rate:***"
-					# pprint(article_entities_count)
-					print "\n(press return for next article.)"
-					raw_input()
+					# print "***Article entities found, along with occurance rate:***"
+					# pprint(article_linked_entities)
+					# print "\n(press return for next article.)"
+					# raw_input()
+					try:
+						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
+						file_count+=1
+					except Exception e:
+						visualize(query_entity, article['headline']['main'], article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
+						file_count+=1
+				try:
+					visualize(query_entity, "Overall Correlation", overall_entity_score, query_entity, 10)
 
 				return 0
 
