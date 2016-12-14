@@ -14,13 +14,16 @@ import matplotlib.lines as mlines
 ## 3) list of dictionaries of entities found keys(entity_label,count) e.g. [{'entity_label':"obama", 'count': 5},{'entity_label':"trump", 'count': 2}]
 ## 4) output_file_name (not including the .png that has to be appended here)
 ## 5) optionally, the number of the highest ranked entities (higher count). Leave this for last if there is time.
-def visualize(entities,values,print_range):
+def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount):
 	#In Range of total pictures(png) to be made 
 	for i in range(1,print_range+1):
 		#Assign Superset figure(num) to pyplot
 		plt.figure(i)
 		#Implicitly make a dict , or else lists are fine too
-		dictionary = dict(zip(entities,values))
+		#dictionary = dict(zip(entities,values))
+		dictionary = {}
+		for entity in article_entities:
+			dictionary[entity['entity_label']] = entity['count']
 		#Initialize the pd. set with Values - Keys
 		s = pd.Series(
 			dictionary.values(),
