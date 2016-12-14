@@ -46,15 +46,25 @@ def visualize(entities,values,print_range):
 		)
 		#MAX RANKED ENTITY
 		max_val = dictionary.values().index(max(dictionary.values()))
+		
+		#Find the corresponded key/entity_name in the dictionary for the max valued entity 
+		counter=0
+		for j in dictionary:
+			if counter == max_val:
+				Entity = j
+				break
+			else:
+				counter+=1
+
 		#Adjust the entity in color palette (rgbkymc = 7)
 		while( max_val - 7 >= 0): max_val-=7
-
+		
 		#Add Line2D object STAR 
 		blue_line = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
-							  markersize=20, label='Most Popular Entity')
+							  markersize=20, label=Entity)
 		#Initialize Legend and add it to Plot
 		plt.legend(handles=[blue_line])
 		#Create Image[ i ] file
-		file = 'temp'+str(i)+'.png'
+		file = 'Entity-'+str(i)+'-.png'
 		#Export 
 		plt.savefig(file)
