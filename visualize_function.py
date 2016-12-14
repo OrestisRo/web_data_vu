@@ -11,7 +11,7 @@ import matplotlib.lines as mlines
 
 def visualize(entities,values,print_range):
 	#In Range of total pictures(png) to be made 
-	for i in range(1,print_range):
+	for i in range(1,print_range+1):
 		#Assign Superset figure(num) to pyplot
 		plt.figure(i)
 		#Implicitly make a dict , or else lists are fine too
