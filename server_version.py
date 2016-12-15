@@ -35,7 +35,8 @@ html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTAL
 def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount):
 		#Initialize Values
 		plt.figure(num=None,figsize=(16,8),dpi=80)
-
+		encoding_regex = re.compile(r"0x([a-zA-Z0-9]+)")
+		article_name = encoding_regex.sub("",article_name)
 		dictionary = dict()
 		entities = list()
 		values = list()
@@ -67,7 +68,7 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 		mpl.rcParams['legend.numpoints'] = 1
 		#remove the second legend marker
 		#Set descriptions:
-		plt.title("Entity Relation")
+		plt.title(article_name)
 		plt.ylabel('Extracted Entities')
 		plt.xlabel('Popularity', color='blue')
 
@@ -106,8 +107,8 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 		encoding_regex = re.compile(r"0x([a-zA-Z0-9]+)")
 		article_name = encoding_regex.sub("",article_name)
 
-		Article_name = mlines.Line2D([], [], color="b", marker=' ',
-							  markersize=15, label="Article Name: " + article_name)
+		# Article_name = mlines.Line2D([], [], color="b", marker=' ',
+							  # markersize=15, label="Article Name: " + article_name)
 		Entity_name = mlines.Line2D([], [], color="b", marker=' ',
 							  markersize=15, label="Related To: " + main_entity_name)
 		Popular_Entity = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
@@ -115,7 +116,7 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 		
 							  
 		#Initialize Legend's items and add it to Plot
-		plt.legend(handles=[Article_name,Entity_name,Popular_Entity])
+		plt.legend(handles=[Entity_name,Popular_Entity])
 
 		#Export 
 		plt.savefig("./output_plots/"+output_name+".png")
@@ -193,12 +194,13 @@ def linkEntities(entities, entity_count):
 			raw_entity += " "+leaf[0].lower()
 		if entity=="":
 			continue
-			
+
 		for l in linked_entities:
 			if raw_entity in l['entity_label'].lower():
 				l['count']+=1
 				raw_matched=1
-				print raw_entity+" -> "+l['entity_label']
+				# print raw_entity+" -> "+l['entity_label']
+				# raw_input()
 		if raw_matched==1:
 			continue
 
@@ -315,6 +317,10 @@ def runProcedure(argv):
 			
 			for entity in linked_entities:	##linked_entities should go here.
 				query_entity = entity['entity_label']
+				if query_entity=="1":
+					print entity
+					raw_input()
+
 				# query_entity = entity['initial_label']
 				api_response = get_articles(query_entity)
 				# articles = toy_parser(api_response)
@@ -352,7 +358,7 @@ def runProcedure(argv):
 									o['count'] += l['count']
 									flag = 1
 							if flag == 0:
-								o['entity_label']=l['count']
+								overall_entity_score.append(l)
 					print "\n------ Title: "+article['headline']['main']+" ----------"
 					# print "***Article entities found, along with occurance rate:***"
 					# pprint(article_linked_entities)
@@ -364,6 +370,7 @@ def runProcedure(argv):
 						continue
 					if not query_entity:
 						continue
+					
 					try:
 						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
 						file_count+=1
