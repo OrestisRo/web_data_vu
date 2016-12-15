@@ -9,6 +9,7 @@ import os
 from nltk import sent_tokenize, word_tokenize, pos_tag, ne_chunk, tree
 from nltk.corpus import stopwords
 from nltk.tag.stanford import StanfordNERTagger
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nytimesarticle import articleAPI
 from pprint import pprint
 from bs4 import BeautifulSoup
@@ -272,8 +273,9 @@ def filter_articles(articles):
 		d.pop('slideshow_credits', None)
 		d.pop('snippet', None)
 		d.pop('lead_paragraph', None)
-		if (d['section_name'].encode('utf-8') != 'Opinion'):
-			filtered.append(d)
+		# if (d['section_name'].encode('utf-8') == 'Opinion'):
+			# filtered.append(d)
+		filtered.append(d)
 		
 	return filtered
 
@@ -313,13 +315,12 @@ def runProcedure(argv):
 			
 			entities, entity_count = extractUniqueEntities(tagged_tokens)
 			linked_entities = linkEntities(entities, entity_count)
-
+			article_sentiment = []
+			total_sent_list = []
+			sid = SentimentIntensityAnalyzer()
 			
 			for entity in linked_entities:	##linked_entities should go here.
 				query_entity = entity['entity_label']
-				if query_entity=="1":
-					print entity
-					raw_input()
 
 				# query_entity = entity['initial_label']
 				api_response = get_articles(query_entity)
@@ -327,24 +328,45 @@ def runProcedure(argv):
 				filtered_articles = filter_articles(api_response)
 				overall_entity_score = []
 				r = ''
-				print len(api_response)
+				print len(api_response['response']['docs'])
 				print len(filtered_articles)
 				file_count = 0
 				for article in filtered_articles:
 					article_entities = []
 					article_entities_count = {}
 					article_linked_entities = []
+					total_art_sent = {}
 					print article['web_url']
+					article_name = article['headline']['main']
 					r = requests.get(article['web_url'])
 					soup = BeautifulSoup(r.text, 'html.parser')
 					# text = soup.get_text('p class="story-body-text story-content"')
 					text = soup.find_all('p', {'class':'story-body-text story-content'})
+
 					merged_text = ''
 					for t in text:
 						# print t.get_text()
 						merged_text+=t.get_text()
+					
 					# merged_text=merged_text.decode('utf-8').encode('utf-8')
 					article_sentences, article_tokens = casualTokenizing(merged_text)
+
+					sent_array = []
+					total_sent = {'neg' : 0, 'pos' : 0, 'neu' : 0, 'comp' : 0}
+					for article_sent in article_sentences:
+						sa = sid.polarity_scores(article_sent)
+						sent_array.append({article_sent:sa})
+						total_sent['neg'] +=sa['neg']
+						total_sent['pos'] +=sa['pos']
+						total_sent['neu'] +=sa['neu']
+						total_sent['comp'] += sa['compound']
+
+					total_art_sent[article_name]=total_sent
+					total_sent_list.append(total_art_sent)
+
+					article_sentiment.append({article_name:sent_array})
+
+
 					article_tagged_tokens = pos_tag(article_tokens)
 					article_entities, article_entities_count = extractUniqueEntities(article_tagged_tokens)
 					article_linked_entities = linkEntities(article_entities, article_entities_count)
@@ -383,6 +405,8 @@ def runProcedure(argv):
 					visualize(query_entity, "Overall Correlation", overall_entity_score, query_entity, 10)
 				except ValueError:
 					print "Overall Correlation /Error"
+				for t in total_sent_list:
+					print t
 	return 0
 				
 
