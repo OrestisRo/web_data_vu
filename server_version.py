@@ -7,11 +7,21 @@ import requests
 import nltk
 import os
 from nltk import sent_tokenize, word_tokenize, pos_tag, ne_chunk, tree
+from nltk.corpus import stopwords
 from nltk.tag.stanford import StanfordNERTagger
 from nytimesarticle import articleAPI
 from pprint import pprint
 from bs4 import BeautifulSoup
+import pandas as pd
+import matplotlib.pyplot as plt;plt.rcdefaults()
+import matplotlib as mpl
+import numpy as np
+import matplotlib.lines as mlines
+import sys
+import operator
 
+reload(sys)  
+sys.setdefaultencoding('utf8')
 
 
 api_key = "01e07bd2b8034b81bc9bef8d3e35df3a"
@@ -22,6 +32,96 @@ warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
 html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTALL)
 
+def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount):
+		#Initialize Values
+		plt.figure(num=None,figsize=(16,8),dpi=80)
+
+		dictionary = dict()
+		entities = list()
+		values = list()
+		for element in article_entities:
+			if element == []:
+				break
+			else:
+				dictionary[element['entity_label']] = element['count']
+				# dictionary[element['initial_label']] = element['count']
+		
+		#bar_amount check
+		if(bar_amount != 0 and bar_amount < len(dictionary)):
+			#Sort Dictionary As Iteretable .items(list) ,reverse=True Descending
+			temp_sort_list = list(sorted(dictionary.items(),key=operator.itemgetter(1), reverse=True))
+			
+			counter=0
+			#Create Sorted Entities - Values Lists
+			for list_item in temp_sort_list:
+				if( counter == bar_amount):
+					break
+				entities.append(list_item[0])
+				values.append(list_item[1])
+				counter+=1
+		
+		
+		#Initialize the pd. set with Values - Keys
+		s = pd.Series(
+			values,
+			entities
+		)
+		mpl.rcParams['legend.numpoints'] = 1
+		#remove the second legend marker
+		#Set descriptions:
+		plt.title("Entity Relation")
+		plt.ylabel('Extracted Entities')
+		plt.xlabel('Popularity', color='blue')
+
+		#Set tick colors:
+		ax = plt.gca()
+		ax.tick_params(axis='x', colors='blue')
+		ax.tick_params(axis='y', colors='purple')
+
+		
+		#Plot the data:
+		my_colors = 'rgbkymc'  #red, green, blue, black, etc. palete
+		
+		#plot Horizontal Bar & Colors & Legend
+		s.plot( 
+			kind='barh', 
+			color=my_colors,
+			legend=True,
+		)
+		#MAX RANKED ENTITY
+		max_val = values.index(max(values))
+		
+		#Find the corresponded key/entity_name in the dictionary for the max valued entity 
+		counter=0
+		Entity = ''
+		for j in entities:
+			if counter == max_val:
+				Entity = j
+				break
+			else:
+				counter+=1
+
+		#Adjust the entity in color palette (rgbkymc = 7)
+		while( max_val - 7 >= 0): max_val-=7
+		
+		#Add Line2D objects to the Legend [Empty Line x2 , STAR]
+		encoding_regex = re.compile(r"0x([a-zA-Z0-9]+)")
+		article_name = encoding_regex.sub("",article_name)
+
+		Article_name = mlines.Line2D([], [], color="b", marker=' ',
+							  markersize=15, label="Article Name: " + article_name)
+		Entity_name = mlines.Line2D([], [], color="b", marker=' ',
+							  markersize=15, label="Related To: " + main_entity_name)
+		Popular_Entity = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
+							  markersize=15, label="Popular Entity: " + Entity)
+		
+							  
+		#Initialize Legend's items and add it to Plot
+		plt.legend(handles=[Article_name,Entity_name,Popular_Entity])
+
+		#Export 
+		plt.savefig("./output_plots/"+output_name+".png")
+		
 
 def validateInput(file_name):
 	if "warc.gz" not in file_name:
@@ -36,11 +136,21 @@ def getText(html_page):
 	return text
 
 def casualTokenizing(text):
+	mr_regex = re.compile(r"(Mr\.|Mrs\.|Ms\.)",flags=re.I)
+	text = mr_regex.sub("",text)
 	sentences = sent_tokenize(text)
 	sentences = filter(lambda sent: sent != "", sentences)
 	tokens = word_tokenize(text)
 
 	return sentences, tokens
+
+def filterTokens(tokens):
+	stop_words = set(stopwords.words("english"))
+	filtered_tokens = []
+	for t in tokens:
+		if t not in stop_words:
+			filtered_tokens.append(t)
+	return filtered_tokens
 
 def extractUniqueEntities(tokens):
 	unique_entities = []
@@ -48,9 +158,10 @@ def extractUniqueEntities(tokens):
 	tagged_entities = ne_chunk(tokens, binary=False)
 	# st = StanfordNERTagger('./stan_files/english.all.3class.distsim.crf.ser.gz','./stan_files/stanford-ner.jar')
 	# print st.tag("The Washington Monument is the most prominent structure in Washington, D.C. and one of the city's early attractions. It was built in honor of George Washington, who led the country to independence and then became its first President.".split())
-	# raw_input()
 	for entity in tagged_entities:
 		if isinstance(entity, tree.Tree):
+			if (entity.label()!="PERSON"):
+				continue
 			if entity not in unique_entities:
 				unique_entities.append(entity)
 			entity_buff=""
@@ -116,9 +227,10 @@ def linkEntities(entities, entity_count):
 	return linked_entities
 
 def get_articles(args):
+	entity = args
 	articles = api_interface.search( 
-		q = 'Barack Obama',
-		fq = {'headline':'Obama','body':'Barack Obama','source':'The New York Times'},
+		q = entity,
+		fq = {'headline': entity,'body': entity,'source':'The New York Times'},
 		sort = 'newest',
 		begin_date=20081125
 		# Date 2008/11/25 onwards
@@ -178,7 +290,7 @@ def runProcedure(argv):
 
 			##Tokening first into sentences and then into words.
 			sentence, tokens = casualTokenizing(text)
-			
+			tokens = filterTokens(tokens)
 			tagged_tokens = pos_tag(tokens)
 
 			##Discovering and tagging Named Entities (NER)
@@ -191,10 +303,11 @@ def runProcedure(argv):
 			
 			for entity in linked_entities:	##linked_entities should go here.
 				query_entity = entity['entity_label']
+				# query_entity = entity['initial_label']
 				api_response = get_articles(query_entity)
 				# articles = toy_parser(api_response)
 				filtered_articles = filter_articles(api_response)
-				overall_entity_score = {}
+				overall_entity_score = []
 				r = ''
 				print len(api_response)
 				print len(filtered_articles)
@@ -224,26 +337,33 @@ def runProcedure(argv):
 							flag = 0
 							for o in overall_entity_score:
 								if l['entity_label']==o['entity_label']:
-									overall_entity_score[o['entity_label']] += l['count']
+									o['count'] += l['count']
 									flag = 1
 							if flag == 0:
-								overall_entity_score[l['entity_label']]=l['count']
+								o['entity_label']=l['count']
 					print "\n------ Title: "+article['headline']['main']+" ----------"
 					# print "***Article entities found, along with occurance rate:***"
 					# pprint(article_linked_entities)
 					# print "\n(press return for next article.)"
 					# raw_input()
+					if not article_linked_entities:
+						print article['headline']['main']
+						print article_linked_entities
+						continue
 					try:
 						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
 						file_count+=1
-					except Exception e:
+					except Exception as e:
 						visualize(query_entity, article['headline']['main'], article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
 						file_count+=1
+				if not overall_entity_score:
+					continue
 				try:
 					visualize(query_entity, "Overall Correlation", overall_entity_score, query_entity, 10)
-
-				return 0
-
+				except ValueError:
+					print "Overall Correlation /Error"
+	return 0
+				
 
 			# write_file = open(output_name, 'a')
 			# for linked in linked_entities:
@@ -251,6 +371,7 @@ def runProcedure(argv):
 			# write_file.close()
 
 				
+
 
 def main(argv):
 	runProcedure(argv)
