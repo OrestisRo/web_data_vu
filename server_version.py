@@ -33,7 +33,7 @@ warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
 html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTALL)
 
-def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount):
+def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount, sentiment=None):
 		#Initialize Values
 		plt.figure(num=None,figsize=(16,8),dpi=80)
 		encoding_regex = re.compile(r"0x([a-zA-Z0-9]+)")
@@ -115,9 +115,14 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 		Popular_Entity = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
 							  markersize=15, label="Popular Entity: " + Entity)
 		
-							  
-		#Initialize Legend's items and add it to Plot
-		plt.legend(handles=[Entity_name,Popular_Entity])
+		if sentiment:
+			neg = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Negative: " + str(sentiment['neg']))
+			neu = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Neutral: " + str(sentiment['neu']))
+			pos = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Positive: " + str(sentiment['pos']))
+			plt.legend(handles=[Entity_name,Popular_Entity,neg,neu,pos])
+		else:
+			#Initialize Legend's items and add it to Plot
+			plt.legend(handles=[Entity_name,Popular_Entity])
 
 		#Export 
 		plt.savefig("./output_plots/"+output_name+".png")
@@ -226,6 +231,7 @@ def linkEntities(entities, entity_count):
 				if hit['_index']=="freebase":
 					try:
 						entity_label = str(hit['_source']['label'])
+						entity_label = entity_label.split(", ")[0]
 					except Exception as e:
 						continue
 					entity_id = '/'+str(hit['_source']['resource'].split('fbase:')[1].replace('.','/'))
@@ -351,20 +357,21 @@ def runProcedure(argv):
 					# merged_text=merged_text.decode('utf-8').encode('utf-8')
 					article_sentences, article_tokens = casualTokenizing(merged_text)
 
-					sent_array = []
-					total_sent = {'neg' : 0, 'pos' : 0, 'neu' : 0, 'comp' : 0}
-					for article_sent in article_sentences:
-						sa = sid.polarity_scores(article_sent)
-						sent_array.append({article_sent:sa})
-						total_sent['neg'] +=sa['neg']
-						total_sent['pos'] +=sa['pos']
-						total_sent['neu'] +=sa['neu']
-						total_sent['comp'] += sa['compound']
+					# sent_array = []
+					# total_sent = {'neg' : 0, 'pos' : 0, 'neu' : 0, 'comp' : 0}
+					# for article_sent in article_sentences:
+					# 	sa = sid.polarity_scores(article_sent)
+					# 	sent_array.append({article_sent:sa})
+					# 	total_sent['neg'] +=sa['neg']
+					# 	total_sent['pos'] +=sa['pos']
+					# 	total_sent['neu'] +=sa['neu']
+					# 	total_sent['comp'] += sa['compound']
 
-					total_art_sent[article_name]=total_sent
-					total_sent_list.append(total_art_sent)
+					# total_art_sent[article_name]=total_sent
+					# total_sent_list.append(total_art_sent)
 
-					article_sentiment.append({article_name:sent_array})
+					sa = sid.polarity_scores(merged_text)
+					article_sentiment.append({article_name:sa})
 
 
 					article_tagged_tokens = pos_tag(article_tokens)
@@ -392,12 +399,11 @@ def runProcedure(argv):
 						continue
 					if not query_entity:
 						continue
-					
 					try:
-						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
+						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5, sa)
 						file_count+=1
 					except Exception as e:
-						visualize(query_entity, article['headline']['main'], article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
+						visualize(query_entity, article['headline']['main'], article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5, sa)
 						file_count+=1
 				if not overall_entity_score:
 					continue
@@ -405,8 +411,10 @@ def runProcedure(argv):
 					visualize(query_entity, "Overall Correlation", overall_entity_score, query_entity, 10)
 				except ValueError:
 					print "Overall Correlation /Error"
-				for t in total_sent_list:
-					print t
+				# for t in total_sent_list:
+				# 	print t
+				# for a in article_sentiment:
+				# 	print a
 	return 0
 				
 
