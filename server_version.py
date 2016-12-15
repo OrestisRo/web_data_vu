@@ -45,21 +45,19 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 			else:
 				dictionary[element['entity_label']] = element['count']
 				# dictionary[element['initial_label']] = element['count']
-		
 		#bar_amount check
-		if(bar_amount != 0 and bar_amount < len(dictionary)):
+		if(bar_amount != 0):
 			#Sort Dictionary As Iteretable .items(list) ,reverse=True Descending
 			temp_sort_list = list(sorted(dictionary.items(),key=operator.itemgetter(1), reverse=True))
 			
 			counter=0
 			#Create Sorted Entities - Values Lists
 			for list_item in temp_sort_list:
-				if( counter == bar_amount):
+				if(counter == len(dictionary)-1 or counter == bar_amount):
 					break
 				entities.append(list_item[0])
 				values.append(list_item[1])
 				counter+=1
-		
 		
 		#Initialize the pd. set with Values - Keys
 		s = pd.Series(
@@ -187,11 +185,23 @@ def linkEntities(entities, entity_count):
 		leaves = entry.leaves()
 		size = len(leaves)
 		entity = ""
+		raw_entity = ""
 		entity_id = ""
+		raw_matched=0
 		for leaf in leaves:
 			entity += '-'+leaf[0].lower()
+			raw_entity += " "+leaf[0].lower()
 		if entity=="":
 			continue
+			
+		for l in linked_entities:
+			if raw_entity in l['entity_label'].lower():
+				l['count']+=1
+				raw_matched=1
+				print raw_entity+" -> "+l['entity_label']
+		if raw_matched==1:
+			continue
+
 		response = os.popen('curl "http://10.149.0.127:9200/freebase/label/_search?q={0}"'.format(entity[1:].encode('utf-8').strip()))
 		try:
 			json_res = json.loads(response.read())
@@ -206,15 +216,17 @@ def linkEntities(entities, entity_count):
 		hits = json_res['hits']['hits']
 		freebase_id = ""
 		for hit in hits:
-			print hit
-			if hit['_score']==max_score:
+			# print hit
+			# if hit['_score']==max_score:
+			if hit['_score']==max_score and max_score>=6:
+				# print hit
 				if hit['_index']=="freebase":
 					try:
 						entity_label = str(hit['_source']['label'])
 					except Exception as e:
 						continue
 					entity_id = '/'+str(hit['_source']['resource'].split('fbase:')[1].replace('.','/'))
-		print "================================================"
+		# print "================================================"
 		if entity_id:
 			entity_buff = ""
 			for leaf in entry.leaves():
@@ -349,6 +361,8 @@ def runProcedure(argv):
 					if not article_linked_entities:
 						print article['headline']['main']
 						print article_linked_entities
+						continue
+					if not query_entity:
 						continue
 					try:
 						visualize(query_entity, article['headline']['main'].encode(utf-8), article_linked_entities, query_entity.split(" ")[0]+"_"+str(file_count), 5)
