@@ -12,7 +12,7 @@ warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
 html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTALL)
 
-warc_index = -1
+
 
 sc = SparkContext("local", "knowledge-acquisition")
 
@@ -41,7 +41,7 @@ def extractUniqueEntities(tokens):
 	return unique_entities
 
 
- def filterTokens(tokens):
+def filterTokens(tokens):
  	stop_words = set(stopwords.words("english"))
  	filtered_tokens = []
  	for t in tokens:
@@ -64,13 +64,15 @@ def getText(html_page):
 def runProcedure(html_page, warc_info):
 	warc_id = warc_info[0]
 	warc_content = warc_info[1]
+	warc_index = -1
 	
 	warc_types = re.findall(warc_type_regex, warc_content)
 	warc_records_ids = re.findall(warc_record_id_regex,warc_content)
 	
-	warc_id = ''
+	warc_id = '' 
+	text = getText(html_page)
 	
-    text = getText(html_page)
+    
 
 	##Tokening first into sentences and then into words.
 	sentence, tokens = casualTokenizing(text)
@@ -127,7 +129,7 @@ def linkEntities(entities):
 		if json_res['hits']['total']==0:
 			print "Got 0 hits for: "+entity[1:].strip()
 			continue
-		max_score = json_res['hits']['max_score']
+		max_score = json_res['hits']['max_score']           
 		hits = json_res['hits']['hits']
 		freebase_id = ""
 		for hit in hits:
@@ -174,11 +176,11 @@ def main(argv):
 	html_pages_array = re.findall(html_regex, warc_info[1])
 
 	for html_page in html_pages_array:
-		html_text_array.append(html_page[0])
+		html_text_array.append(html_page[0]) 
 	
 	
 	rdd = sc.parallelize(html_text_array, 4)
-	linked_entities_rdd = rdd.flatMap(lambda x: runProcedure(x, warc_info))
+	linked_entities_rdd = rdd.map(lambda x: runProcedure(x, warc_info))
 
 	linked_entities = linked_entities_rdd.collect()	
 	write_file = open(output_name, 'a')
