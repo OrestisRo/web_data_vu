@@ -12,6 +12,8 @@ warc_type_regex = re.compile(r'((WARC-Type:).*)')
 warc_record_id_regex = re.compile(r'((WARC-Record-ID:) <.*>)')
 html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTALL)
 
+warc_index = -1
+
 sc = SparkContext("local", "knowledge-acquisition")
 
 
@@ -65,7 +67,7 @@ def runProcedure(html_page, warc_info):
 	
 	warc_types = re.findall(warc_type_regex, warc_content)
 	warc_records_ids = re.findall(warc_record_id_regex,warc_content)
-	warc_index = -1
+	
 	warc_id = ''
 	
     text = getText(html_page)
