@@ -35,7 +35,7 @@ html_regex = re.compile(r'<html\s*(((?!<html|<\/html>).)+)\s*<\/html>', re.DOTAL
 
 def visualize(main_entity_name, article_name, article_entities, output_name, bar_amount, sentiment=None):
 		#Initialize Values
-		plt.figure(num=None,figsize=(16,8),dpi=80)
+		plt.figure(num=None,figsize=(12,7),dpi=80)
 		encoding_regex = re.compile(r"0x([a-zA-Z0-9]+)")
 		article_name = encoding_regex.sub("",article_name)
 		dictionary = dict()
@@ -279,9 +279,9 @@ def filter_articles(articles):
 		d.pop('slideshow_credits', None)
 		d.pop('snippet', None)
 		d.pop('lead_paragraph', None)
-		# if (d['section_name'].encode('utf-8') == 'Opinion'):
-			# filtered.append(d)
-		filtered.append(d)
+		if (d['section_name'].encode('utf-8') != 'Opinion'):
+			filtered.append(d)
+		# filtered.append(d)
 		
 	return filtered
 
