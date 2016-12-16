@@ -115,21 +115,19 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 		Popular_Entity = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
 							  markersize=15, label="Popular Entity: " + Entity)
 		
+		
+		first_legend =plt.legend(handles=[Entity_name,Popular_Entity],loc=1) 
+		ax = plt.gca().add_artist(first_legend)
 		if sentiment:
 			neg = mlines.Line2D([], [], color="white", marker=' ', markersize=15, label="Negative: " + str(sentiment['neg']))
 			neu = mlines.Line2D([], [], color="white", marker=' ', markersize=15, label="Neutral: " + str(sentiment['neu']))
 			pos = mlines.Line2D([], [], color="white", marker=' ', markersize=15, label="Positive: " + str(sentiment['pos']))
 			
 			#Add First Legend and manually Draw it --.add_artist() 
-            first_legend = plt.legend(handles=[neg,neu,pos],loc='upper center', bbox_to_anchor=(0.5,-0.1))
-			ax = plt.gca().add_artist(first_legend)
-		plt.legend(handles=[Entity_name,Popular_Entity],loc=1)
-			
-		#Export  & adjust the outside Legend
-		if(first_legend):
+            plt.legend(handles=[neg,neu,pos],loc='upper center', bbox_to_anchor=(0.5,-0.1))
 			plt.savefig("./output_plots/"+output_name+".png", bbox_inches='tight')
-		else:
-			plt.savefig("./output_plots/"+output_name+".png")
+
+		plt.savefig("./output_plots/"+output_name+".png")
 	return 0
 
 def validateInput(file_name):
