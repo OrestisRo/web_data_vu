@@ -110,19 +110,19 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 
 		# Article_name = mlines.Line2D([], [], color="b", marker=' ',
 							  # markersize=15, label="Article Name: " + article_name)
-		Entity_name = mlines.Line2D([], [], color="b", marker=' ',
+		Entity_name = mlines.Line2D([], [], color="white", marker=' ',
 							  markersize=15, label="Related To: " + main_entity_name)
 		Popular_Entity = mlines.Line2D([], [], color="rgbkymc"[max_val], marker='*',
 							  markersize=15, label="Popular Entity: " + Entity)
 		
 		if sentiment:
-			neg = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Negative: " + str(sentiment['neg']))
-			neu = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Neutral: " + str(sentiment['neu']))
-			pos = mlines.Line2D([], [], color="b", marker=' ', markersize=15, label="Positive: " + str(sentiment['pos']))
+			neg = mlines.Line2D([], [], color="red", marker=' ', markersize=15, label="Negative: " + str(sentiment['neg']))
+			neu = mlines.Line2D([], [], color="blue", marker=' ', markersize=15, label="Neutral: " + str(sentiment['neu']))
+			pos = mlines.Line2D([], [], color="green", marker=' ', markersize=15, label="Positive: " + str(sentiment['pos']))
 			plt.legend(handles=[Entity_name,Popular_Entity,neg,neu,pos])
 		else:
 			#Initialize Legend's items and add it to Plot
-			plt.legend(handles=[Entity_name,Popular_Entity])
+			plt.legend(handles=[Article_name,Entity_name,Popular_Entity],loc='upper center', bbox_to_anchor=(0.5,-0.1))
 
 		#Export 
 		plt.savefig("./output_plots/"+output_name+".png")
