@@ -124,7 +124,7 @@ def visualize(main_entity_name, article_name, article_entities, output_name, bar
 			pos = mlines.Line2D([], [], color="white", marker=' ', markersize=15, label="Positive: " + str(sentiment['pos']))
 			
 			#Add First Legend and manually Draw it --.add_artist() 
-            plt.legend(handles=[neg,neu,pos],loc='upper center', bbox_to_anchor=(0.5,-0.1))
+            	plt.legend(handles=[neg,neu,pos],loc='upper center', bbox_to_anchor=(0.5,-0.1))
 			plt.savefig("./output_plots/"+output_name+".png", bbox_inches='tight')
 		else:
 			plt.savefig("./output_plots/"+output_name+".png")
