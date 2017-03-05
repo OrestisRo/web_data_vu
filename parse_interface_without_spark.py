@@ -29,9 +29,9 @@ def validateInput(file_name):
 	else:
 		return file_name
 
-# def getChunker():
-#       chunkGram = r"""Chunk: {<RB.?>*<VB.?>*<NNP>+<NN>?}"""
-#       return nltk.RegexpParser(chunkGram)
+def getChunker():
+       chunkGram = r"""Chunk: {<RB.?>*<VB.?>*<NNP>+<NN>?}"""
+       return nltk.RegexpParser(chunkGram)
 
 def getText(html_page):
 	soup = BeautifulSoup("<html>"+html_page+"</html>", 'html.parser')
@@ -45,45 +45,45 @@ def casualTokenizing(text):
 
 	return sentences, tokens
 
-# def filterTokens(tokens):
-#       stop_words = set(stopwords.words("english"))
-#       filtered_tokens = []
-#       for t in tokens:
-#               if t not in stop_words:
-#                       filtered_tokens.append(t)
-#       return filtered_tokens
+def filterTokens(tokens):
+    	stop_words = set(stopwords.words("english"))
+      	filtered_tokens = []
+       	for t in tokens:
+               	if t not in stop_words:
+                       	filtered_tokens.append(t)
+	return filtered_tokens
 
-# def stemmatizeTokens(tokens):
-#       stem = PorterStemmer()
-#       stemmed_tokens = []
-#       for f in tokens:
-#               stemmed_tokens.append(stem.stem(f))
-#       return stemmed_tokens
+def stemmatizeTokens(tokens):
+	stem = PorterStemmer()
+	stemmed_tokens = []
+	for f in tokens:
+		stemmed_tokens.append(stem.stem(f))
+	return stemmed_tokens
 
 
-# def lemmatizeTokens(tokens,pos):
-#       lemmatizer = WordNetLemmatizer()
-#       lemmatized_tokens=[]
-#       for f in tokens:
-#               lemmatized_tokens.append(lemmatizer.lemmatize(f,pos))
-#       return lemmatized_tokens
+def lemmatizeTokens(tokens,pos):
+       lemmatizer = WordNetLemmatizer()
+       lemmatized_tokens=[]
+       for f in tokens:
+               lemmatized_tokens.append(lemmatizer.lemmatize(f,pos))
+       return lemmatized_tokens
 
-# class bigramChunker(nltk.ChunkParserI):
-#       def __init__(self, train_sents):
-#               train_data = [[(t,c) for w,t,c in nltk.chunk.tree2conlltags(sent)] for sent in train_sents]
-#               self.tagger = nltk.BigramTagger(train_data)
+class bigramChunker(nltk.ChunkParserI):
+	def __init__(self, train_sents):
+		train_data = [[(t,c) for w,t,c in nltk.chunk.tree2conlltags(sent)] for sent in train_sents]
+		self.tagger = nltk.BigramTagger(train_data)
 
-#       def parse(self, sentence):
-#               pos_tags = [pos for (word,pos) in sentence]
-#               tagged_pos_tags = self.tagger.tag(pos_tags)
-#               chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
-#               conlltags = [(word, pos, chunktag) for ((word,pos),chunktag) in zip(sentence, chunktags)]
-#               return nltk.chunk.conlltags2tree(conlltags)
+	def parse(self, sentence):
+		pos_tags = [pos for (word,pos) in sentence]
+		tagged_pos_tags = self.tagger.tag(pos_tags)
+		chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
+		conlltags = [(word, pos, chunktag) for ((word,pos),chunktag) in zip(sentence, chunktags)]
+		return nltk.chunk.conlltags2tree(conlltags)
 
-# def runEvaluation():
-#       global train_sents, test_sents
-#       bigram_chunker = bigramChunker(train_sents)
-#       print(bigram_chunker.evaluate(test_sents))
+	def runEvaluation():
+		global train_sents, test_sents
+		bigram_chunker = bigramChunker(train_sents)
+		print(bigram_chunker.evaluate(test_sents))
 
 def extractUniqueEntities(tokens):
 	unique_entities = []
@@ -172,22 +172,22 @@ def runProcedure(argv):
 			
 			##Removing stopwords
 			##Couldn't fix an indexing error making it a function, and I'll do it another time.
-			# filtered_tokens = filterTokens(tokens)
+			filtered_tokens = filterTokens(tokens)
 
 			# ##Stemming
-			# stemmed_tokens = stemmatizeTokens(tokens)
+			stemmed_tokens = stemmatizeTokens(tokens)
 
 			# ##Lemmatizing
 			# ##For the lemmatization we are using the "n", cause we are getting the nouns. This can change if we make a different decision.
-			# lemmatized_tokens=lemmatizeTokens(tokens,"n")
+			lemmatized_tokens=lemmatizeTokens(tokens,"n")
 
 			##Pos-tagging the pre-processed words
 			tagged_tokens = pos_tag(tokens)
 
 			##Chunking
-			# chunked_tokens = chunkParser.parse(tagged_tokens)
+			chunked_tokens = chunkParser.parse(tagged_tokens)
 			
-			# runEvaluation()
+			runEvaluation()
 
 			##Discovering and tagging Named Entities (NER)
 			warc_index+=3
